@@ -10,10 +10,11 @@ En la carpeta [`videos/`](./videos) se incluyen dos capturas de pruebas en vivo:
 ## 📹 Videos de prueba
 
 - **Simulación de rotación diaria**  
-  [▶ simulate-rotate-log.mp4](https://github.com/theinsideshine/fs_logger_demo/raw/main/videos/simulate-rotate-log.mp4)
+  [![Simulación rotación](./imagenes/sim_rotate.png)](https://www.youtube.com/watch?v=CJotrGeeTWw)
 
 - **Simulación de low-water (espacio crítico)**  
-  [▶ simulate-lowWater-log.mp4](https://github.com/theinsideshine/fs_logger_demo/raw/main/videos/simulate-lowWater-log.mp4)
+  [![Simulación low-water](./imagenes/sim_lowWater.png)](https://www.youtube.com/watch?v=xyVYG-2eL5U)
+
 
 
 

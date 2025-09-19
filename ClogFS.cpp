@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <cstring>
 
-// ctor
 ClogFS::ClogFS()
 : _file(), _fileOk(false), _fileReady(false),
   _nowFn(nullptr),
@@ -13,8 +12,10 @@ ClogFS::ClogFS()
   _fsLowWater(2048),
   _basePath("/"),
   _currentPath(""),
-  _minSev(INFO)
+  _minSev(INFO),
+  _level(LVL_SERIAL_AND_LOG)   // default: Serial + FS
 {}
+
 
 // config
 void ClogFS::setTimeProvider(time_t (*nowFn)()){ _nowFn = nowFn; }
@@ -138,9 +139,9 @@ void ClogFS::crit(const __FlashStringHelper *fmt, ...){
   va_list ap; va_start(ap, fmt); vmsg_(CRIT, fmt, ap); va_end(ap);
 }
 
-// comun: "INFO 09:44:24 ..." o "INFO 114 ..."
 void ClogFS::vmsg_(Severity sev, const __FlashStringHelper *fmt, va_list ap){
   if (sev < _minSev) return;
+  if (_level == LVL_OFF) return;
 
   char buf[192];
   vsnprintf_P(buf, sizeof(buf), (PGM_P)fmt, ap);
@@ -148,18 +149,20 @@ void ClogFS::vmsg_(Severity sev, const __FlashStringHelper *fmt, va_list ap){
   char ts[16] = {0};
   bool have_ts = buildTimePrefix(ts, sizeof(ts));
 
-  // Serial
-  Serial.print(sevName(sev));
-  Serial.print(' ');
-  if (have_ts) { Serial.print(ts); } else { Serial.print(millis()); Serial.print(' '); }
-  Serial.println(buf);
-
-  // FS
   char line[224];
   if (have_ts) snprintf(line, sizeof(line), "%s %s%s", sevName(sev), ts, buf);
   else         snprintf(line, sizeof(line), "%s %lu %s", sevName(sev), (unsigned long)millis(), buf);
-  writeLineASCII(line);
+
+  // Serial?
+  if (_level == LVL_SERIAL || _level == LVL_SERIAL_AND_LOG) {
+    Serial.println(line);
+  }
+  // FS?
+  if (_level == LVL_LOG_ONLY || _level == LVL_SERIAL_AND_LOG) {
+    writeLineASCII(line);
+  }
 }
+
 
 // utilidades
 
@@ -243,6 +246,9 @@ bool ClogFS::reopenFreshFileAfterWipe(const char* header_ascii){
 }
 
 void ClogFS::writeLineASCII(const char* line){
+  // si no estamos en un modo que escribe a FS, salgo
+  if (!(_level == LVL_LOG_ONLY || _level == LVL_SERIAL_AND_LOG)) return;
+
   size_t need = strlen(line) + 1;
 
   size_t freeB = fsFreeBytes();
@@ -269,6 +275,7 @@ void ClogFS::writeLineASCII(const char* line){
     _file.println(line);
   }
 }
+
 
 void ClogFS::flushBootBufferToFile(){
   if(!_fileOk || _bootBuf.isEmpty()) return;

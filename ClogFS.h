@@ -10,6 +10,14 @@ class ClogFS {
 public:
   enum Severity : uint8_t { TRACE=0, DEBUG=1, INFO=2, WARN=3, ERROR=4, CRIT=5 };
 
+  enum Level : uint8_t {
+  LVL_OFF            = 0,
+  LVL_SERIAL         = 1,
+  LVL_LOG_ONLY       = 2,
+  LVL_SERIAL_AND_LOG = 3
+};
+
+
   ClogFS();
 
   // config
@@ -48,6 +56,9 @@ public:
   bool wipeAllInBasePath();
   bool reopenFreshFileAfterWipe(const char* header_ascii=nullptr);
 
+  void setLevel(Level lv) { _level = lv; }
+  Level level() const { return _level; }
+
 private:
   void vmsg_(Severity sev, const __FlashStringHelper *fmt, va_list ap);
   void writeLineASCII(const char* line);
@@ -65,6 +76,9 @@ private:
   String _basePath;
   String _currentPath;
   Severity _minSev;
+
+  Level _level;
+
 };
 
 #endif // CLOG_FS_H

@@ -13,7 +13,7 @@
 // =========================
 static const char* WIFI_SSID   = "Pablo";
 static const char* WIFI_PASS   = "01410398716";
-static const char* FW_VERSION  = "demo-6.4";
+static const char* FW_VERSION  = "demo-7.1"; //level
 
 // Instancias
 RtcNtp  Rtc;
@@ -180,15 +180,40 @@ static void handleSerialCommands(){
     Log.setMinSeverity(s);
     Serial.printf("log level = %s\n", ClogFS::sevName(s));
 
+  } else if (line.startsWith("out mode")) {
+    String arg = line.substring(String("out mode").length());
+    arg.trim();
+    if (arg.equalsIgnoreCase("off")) {
+      Log.setLevel(ClogFS::LVL_OFF);
+    } else if (arg.equalsIgnoreCase("serial")) {
+      Log.setLevel(ClogFS::LVL_SERIAL);
+    } else if (arg.equalsIgnoreCase("log") || arg.equalsIgnoreCase("fs")) {
+      Log.setLevel(ClogFS::LVL_LOG_ONLY);
+    } else if (arg.equalsIgnoreCase("serial+log")) {
+      Log.setLevel(ClogFS::LVL_SERIAL_AND_LOG);
+    } else {
+      Serial.println(F("uso: out mode off|serial|log|fs|serial+log"));
+      return;
+    }
+    ClogFS::Level lv = Log.level();
+    const char* name =
+      (lv==ClogFS::LVL_OFF)?"off":
+      (lv==ClogFS::LVL_SERIAL)?"serial":
+      (lv==ClogFS::LVL_LOG_ONLY)?"log":
+      "serial+log";
+    Serial.printf("out mode = %s\n", name);
+
   } else {
     Serial.println(F(
       "cmd: use 'cfg on', 'cfg off', 'fs', 'format',\n"
       "     'rot try', 'rot +1d', 'rot reset',\n"
       "     'log lowwater <bytes>', 'log burst N [size]',\n"
-      "     'fs stats', 'log level <nivel>'\n"
+      "     'fs stats', 'log level <nivel>',\n"
+      "     'out mode off|serial|log|fs|serial+log'\n"
     ));
   }
 }
+
 
 void setup(){
   Serial.begin(115200);
@@ -200,6 +225,7 @@ void setup(){
   // Log.setTimeProvider(rtc_now_provider_testable);
   Log.setFsLowWater(2048);
   Log.setMinSeverity(ClogFS::INFO);  // default: INFO+
+  Log.setLevel(ClogFS::LVL_SERIAL_AND_LOG);
 
   Log.info(Msg::APP_START(), FW_VERSION);
   st = ST_INIT_FS;

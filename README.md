@@ -91,13 +91,21 @@ time_t rtc_now_provider() {
   return Rtc.isSynced() ? Rtc.now() : 0;
 }
 
+time_t rtc_now_provider_testable() {
+  time_t base = Rtc.isSynced() ? Rtc.now() : time(nullptr);
+  return base + g_test_time_offset; // g_test_time_offset es global en la demo
+}
+
 void setup() {
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
   LittleFS.begin(true, "/littlefs", 10, "littlefs");
 
   Log.setBootBufferCapacityBytes(4096);
-  Log.setTimeProvider(rtc_now_provider);
+  // --- elegí uno de estos providers ---
+  // Log.setTimeProvider(rtc_now_provider);          // ← usa RTC/NTP real
+  Log.setTimeProvider(rtc_now_provider_testable);   // ← usar para pruebas de rotación
+
   Log.setFsLowWater(2048);
   Log.setMinSeverity(ClogFS::INFO); // default: INFO+
   Log.setLevel(ClogFS::LVL_SERIAL_AND_LOG); // default: serial+log
@@ -185,11 +193,28 @@ Accediendo a `http://<IP_DEL_ESP>/fs` en el navegador se muestra:
 -   **Rotación diaria**: `Log.rotateDailyIfNeeded(header)`.
 -   **Low-water**: `Log.setFsLowWater(2048);`
 
-### Simulación de Rotación (Serial)
+### 🧪 Prueba de Rotación con *time provider testable*
 
-    rot try       // intenta rotar con fecha actual
-    rot +1d       // simula +1 día y rota
-    rot reset     // vuelve al tiempo real
+El demo incluye un proveedor alternativo (`rtc_now_provider_testable`)
+que usa un **offset de segundos** (`g_test_time_offset`).\
+Esto permite simular el paso de días desde el Serial.
+
+En `setup()`:
+
+``` cpp
+// Log.setTimeProvider(rtc_now_provider);          // ← usa RTC/NTP real
+Log.setTimeProvider(rtc_now_provider_testable);   // ← usar para pruebas de rotación
+```
+
+👉 Para probar, **descomentá** `rtc_now_provider_testable` y comentá
+`rtc_now_provider`.\
+Cuando vuelvas a producción, hacé lo inverso.
+
+**Comandos de prueba (Serial):**
+
+    rot try       // intenta rotar con la fecha simulada
+    rot +1d       // suma 24h al offset y chequea rotación
+    rot reset     // vuelve el offset a 0 (hora real)
 
 ### Simulación de Low-water (Serial)
 

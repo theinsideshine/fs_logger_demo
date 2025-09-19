@@ -8,13 +8,14 @@
 #include "LogWeb.h"
 #include "MsgCat.h"
 
+//C:\Users\ptavolaro\AppData\Local\arduino\sketches
+
 // =========================
 // Config
 // =========================
 static const char* WIFI_SSID   = "Pablo";
 static const char* WIFI_PASS   = "01410398716";
-static const char* FW_VERSION  = "demo-7.1"; //level
-
+static const char* FW_VERSION  = "demo-7.6"; //level
 // Instancias
 RtcNtp  Rtc;
 ClogFS  Log;
@@ -166,6 +167,14 @@ static void handleSerialCommands(){
   } else if (line.startsWith("log level")) {
     String arg = line.substring(String("log level").length());
     arg.trim();
+
+    if (arg.length() == 0) {
+      // CONSULTA (no cambia nada)
+      ClogFS::Severity cur = Log.minSeverity();
+      Serial.printf("log level (actual) = %s\n", ClogFS::sevName(cur));
+      return;
+    }
+
     ClogFS::Severity s = ClogFS::INFO;
     if      (arg.equalsIgnoreCase("TRACE")) s = ClogFS::TRACE;
     else if (arg.equalsIgnoreCase("DEBUG")) s = ClogFS::DEBUG;
@@ -183,36 +192,47 @@ static void handleSerialCommands(){
   } else if (line.startsWith("out mode")) {
     String arg = line.substring(String("out mode").length());
     arg.trim();
-    if (arg.equalsIgnoreCase("off")) {
-      Log.setLevel(ClogFS::LVL_OFF);
-    } else if (arg.equalsIgnoreCase("serial")) {
-      Log.setLevel(ClogFS::LVL_SERIAL);
-    } else if (arg.equalsIgnoreCase("log") || arg.equalsIgnoreCase("fs")) {
-      Log.setLevel(ClogFS::LVL_LOG_ONLY);
-    } else if (arg.equalsIgnoreCase("serial+log")) {
-      Log.setLevel(ClogFS::LVL_SERIAL_AND_LOG);
-    } else {
+
+    auto modeName = [](ClogFS::Level lv)->const char* {
+      switch (lv) {
+        case ClogFS::LVL_OFF:            return "off";
+        case ClogFS::LVL_SERIAL:         return "serial";
+        case ClogFS::LVL_LOG_ONLY:       return "log";
+        case ClogFS::LVL_SERIAL_AND_LOG: return "serial+log";
+      }
+      return "?";
+    };
+
+    if (arg.length() == 0) {
+      // CONSULTA (no cambia nada)
+      ClogFS::Level lv = Log.level();
+      Serial.printf("out mode (actual) = %s\n", modeName(lv));
+      return;
+    }
+
+    if      (arg.equalsIgnoreCase("off"))        Log.setLevel(ClogFS::LVL_OFF);
+    else if (arg.equalsIgnoreCase("serial"))     Log.setLevel(ClogFS::LVL_SERIAL);
+    else if (arg.equalsIgnoreCase("log") || arg.equalsIgnoreCase("fs"))
+                                                 Log.setLevel(ClogFS::LVL_LOG_ONLY);
+    else if (arg.equalsIgnoreCase("serial+log")) Log.setLevel(ClogFS::LVL_SERIAL_AND_LOG);
+    else {
       Serial.println(F("uso: out mode off|serial|log|fs|serial+log"));
       return;
     }
     ClogFS::Level lv = Log.level();
-    const char* name =
-      (lv==ClogFS::LVL_OFF)?"off":
-      (lv==ClogFS::LVL_SERIAL)?"serial":
-      (lv==ClogFS::LVL_LOG_ONLY)?"log":
-      "serial+log";
-    Serial.printf("out mode = %s\n", name);
+    Serial.printf("out mode = %s\n", modeName(lv));
 
   } else {
     Serial.println(F(
       "cmd: use 'cfg on', 'cfg off', 'fs', 'format',\n"
       "     'rot try', 'rot +1d', 'rot reset',\n"
       "     'log lowwater <bytes>', 'log burst N [size]',\n"
-      "     'fs stats', 'log level <nivel>',\n"
-      "     'out mode off|serial|log|fs|serial+log'\n"
+      "     'fs stats', 'log level [nivel]',\n"
+      "     'out mode [off|serial|log|fs|serial+log]'\n"
     ));
   }
 }
+
 
 
 void setup(){
@@ -222,7 +242,7 @@ void setup(){
 
   Log.setBootBufferCapacityBytes(4096);
   Log.setTimeProvider(rtc_now_provider);
-  // Log.setTimeProvider(rtc_now_provider_testable);
+  //Log.setTimeProvider(rtc_now_provider_testable);
   Log.setFsLowWater(2048);
   Log.setMinSeverity(ClogFS::INFO);  // default: INFO+
   Log.setLevel(ClogFS::LVL_SERIAL_AND_LOG);

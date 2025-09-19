@@ -54,7 +54,7 @@ void LogWeb::setupEndpoints() {
     server_.send(302);
   });
 
-  // borrar todos los archivos
+    // borrar todos los archivos
   server_.on("/fs/erase", HTTP_GET, [this](){
     File root = LittleFS.open(basePath_, FILE_READ);
     if (!root || !root.isDirectory()) {
@@ -70,8 +70,26 @@ void LogWeb::setupEndpoints() {
 
     size_t ok = 0, fail = 0;
     for (const auto& n : names) {
-      bool removed = LittleFS.remove(n);
+      // Normalizar a ruta absoluta bajo basePath_
+      String full = n;
+      if (!full.startsWith("/")) {
+        if (basePath_.endsWith("/")) full = basePath_ + full;
+        else                         full = basePath_ + "/" + full;
+      }
+
+      // Intento principal
+      bool removed = LittleFS.remove(full);
+
+      // Compatibilidad con montaje con prefijo (p.ej. "/littlefs")
+      if (!removed && full.startsWith("/littlefs/")) {
+        removed = LittleFS.remove(full.substring(10)); // quita "/littlefs"
+      }
+      if (!removed && !full.startsWith("/littlefs/")) {
+        removed = LittleFS.remove(String("/littlefs") + full);
+      }
+
       removed ? ok++ : fail++;
+      delay(1); // cooperar con WDT si hay muchos archivos
     }
 
     server_.sendHeader("Location", "/fs");
@@ -79,12 +97,8 @@ void LogWeb::setupEndpoints() {
                  String("logs borrados ok=") + ok + " fail=" + fail);
   });
 
-  // formatear TODO
-  server_.on("/fs/format", HTTP_GET, [this](){
-    bool ok = LittleFS.format();
-    server_.sendHeader("Location", "/fs");
-    server_.send(302, "text/plain", ok ? "FS formateado" : "Error formateando FS");
-  });
+ 
+
 
   // listar
   server_.on("/fs", HTTP_GET, [this](){
@@ -193,12 +207,11 @@ String LogWeb::renderDirHTML(const String& dirPath){
       html += "</li>";
     }
   }
-  html += "</ul>";    
+   html += "</ul>";
   html += "<p>"
           "<a href='/fs/erase' onclick=\"return confirm('¿Borrar todos los logs?');\">🗑️ Borrar todos los logs</a>"
-          " &nbsp;|&nbsp; "
-          "<a href='/fs/format' onclick=\"return confirm('⚠️ FORMATEAR LittleFS COMPLETO. Esto borra TODO y no se puede deshacer. ¿Continuar?');\">🧨 Formatear LittleFS</a>"
           "</p>";
+
 
   return html;
 }

@@ -255,6 +255,9 @@ Cuando vuelvas a producción, hacé lo inverso.
 - **Simulación de low-water (espacio crítico)**  
   [![Simulación low-water](./imagenes/sim_lowWater.png)](https://www.youtube.com/watch?v=xyVYG-2eL5U)
 
+- **Demo**  
+  [![demo](./imagenes/logger.png)](https://youtu.be/VUFFeSqsDMs)
+
 
 
 ## Licencia
